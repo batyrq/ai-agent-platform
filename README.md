@@ -1,169 +1,173 @@
 # AI Agent Platform
 
-Платформа для создания AI-агентов с собственной базой знаний. Пользователь
-создаёт агента, загружает документы, и агент отвечает в чате, опираясь на эти
-документы и **приводя цитаты на источники**. Под капотом — мульти-шаговый
-RAG-пайплайн: векторный поиск по pgvector → tool-calling через Groq → синтез
-ответа со ссылками. Каждый шаг агента виден в интерфейсе.
+> Create AI agents with their own knowledge base, upload documents, and chat with
+> answers grounded in those documents — with inline citations and a live view of
+> the agent's reasoning steps.
 
-Поднимается одной командой через Docker Compose.
+Each agent runs a **multi-step RAG pipeline**: the question is embedded and matched
+against a `pgvector` store, a **LangGraph** agent decides whether to pull more
+context via **Groq function-calling**, and the final answer is streamed back token
+by token with citations to the source chunks.
 
----
+**Live demo:** coming soon · **Run it locally in one command:** see [Run locally](#run-locally).
 
-## Стек
-
-| Слой        | Технология                                                    |
-|-------------|---------------------------------------------------------------|
-| Frontend    | Next.js 14 (App Router) + TypeScript + Tailwind               |
-| Backend     | NestJS 10 + Prisma 5                                           |
-| База данных | PostgreSQL 16 + **pgvector** (векторный поиск)                |
-| LLM         | **Groq** (Llama 3.3 70B) + function-calling                   |
-| Оркестрация | **LangGraph** (граф `retrieve → agent → tools`)               |
-| Эмбеддинги  | `@xenova/transformers`, all-MiniLM-L6-v2, **локально**, 384-d |
-
-> Почему эмбеддинги локальные: у Groq нет эндпоинта эмбеддингов (только
-> LLM-инференс и tool-calling). Локальная модель снимает необходимость во
-> втором платном ключе — нужен только бесплатный ключ Groq для генерации.
+<!-- Replace docs/demo.svg with a real screenshot or GIF of the chat + steps panel -->
+<p align="center">
+  <img src="docs/demo.svg" alt="Chat with streaming answer, citations, and the agent steps panel" width="820">
+</p>
 
 ---
 
-## Быстрый старт
+## What it does
 
-Нужен только установленный **Docker** (с Docker Compose).
+- 🧠 **Create agents** — each with its own system prompt and knowledge base.
+- 📄 **Upload documents** (TXT / Markdown / PDF) → chunked → embedded → stored in pgvector.
+- 💬 **Chat with streaming** — answers stream in token by token over SSE.
+- 🔎 **Multi-step RAG** — the agent retrieves, and can call a `search_knowledge_base`
+  tool to pull more context before answering (real ReAct-style tool-calling).
+- 📌 **Citations** — every answer links back to the exact source chunks (`[1]`, `[2]`…).
+- 🪜 **Agent steps panel** — a live timeline of what the agent did (search → tool → synthesis).
+- 🔑 **BYOK (bring your own key)** — users paste their own Groq API key in the UI; it is
+  stored in the browser and **never persisted or logged** server-side.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U["👤 User · Browser"]
+    FE["Next.js Frontend<br/>dashboard · chat (SSE) · steps"]
+    BE["NestJS Backend<br/>auth · agents · documents · chat"]
+    EMB["Local embeddings<br/>all-MiniLM-L6-v2 · 384-d"]
+    PG[("PostgreSQL + pgvector<br/>vector search")]
+    LG["LangGraph agent<br/>retrieve → agent → tools"]
+    GROQ["Groq LLM<br/>Llama 3.3 70B · function-calling"]
+
+    U -->|JWT · x-groq-key| FE
+    FE -->|REST + SSE stream| BE
+    BE --> EMB
+    EMB -->|embeddings| PG
+    BE --> LG
+    LG -->|cosine KNN search| PG
+    LG <-->|tool-calling · synthesis| GROQ
+    LG -->|tokens + steps| BE
+    BE -->|SSE: token / step / citations| FE
+```
+
+**The agent graph** (LangGraph `StateGraph`) — a ReAct loop with a retrieval-backed tool:
+
+```mermaid
+flowchart LR
+    START([start]) --> R[retrieve<br/>vector search]
+    R --> A{agent<br/>LLM decides}
+    A -->|needs more context| T[tools<br/>search_knowledge_base]
+    T --> A
+    A -->|final answer| E([stream + cite])
+```
+
+> **Why local embeddings?** Groq only serves LLM inference + function-calling (no
+> embeddings endpoint), so embeddings are computed locally with
+> `@xenova/transformers`. That keeps the whole thing free apart from a single
+> (user-provided) Groq key.
+
+---
+
+## Tech stack
+
+| Layer        | Tech                                                          |
+|--------------|--------------------------------------------------------------|
+| Frontend     | Next.js 14 (App Router) · TypeScript · Tailwind              |
+| Backend      | NestJS 10 · Prisma 5                                          |
+| Database     | PostgreSQL 16 · **pgvector** (HNSW index, cosine distance)   |
+| LLM          | **Groq** — Llama 3.3 70B + function-calling                  |
+| Orchestration| **LangGraph** — `retrieve → agent → tools` state graph       |
+| Embeddings   | `@xenova/transformers` · all-MiniLM-L6-v2 · 384-d · local    |
+| Auth         | JWT (Passport) · bcrypt                                       |
+| Infra        | Docker Compose (Postgres + backend + frontend)               |
+
+---
+
+## Run locally
+
+You only need **Docker** (with Docker Compose) and a free **Groq API key**.
 
 ```bash
-# 1. Скопировать конфиг и вписать бесплатный ключ Groq
-cp .env.example .env
-#   → открыть .env и заменить GROQ_API_KEY на ключ из https://console.groq.com/keys
+# 1. Clone
+git clone https://github.com/batyrq/ai-agent-platform.git
+cd ai-agent-platform
 
-# 2. Поднять весь стек
+# 2. Configure — copy the template (Groq key is optional thanks to BYOK)
+cp .env.example .env
+
+# 3. Bring up the whole stack
 docker compose up -d --build
 
-# 3. Открыть в браузере
-#    Frontend:  http://localhost:3000
-#    Backend:   http://localhost:4000/health
+# Frontend → http://localhost:3000
+# Backend  → http://localhost:4000/health
 ```
 
-Первый старт дольше обычного: backend качает модель эмбеддингов (~90 МБ) и
-индексирует демо-документы (seed). За статусом можно следить так:
+On first start the backend downloads the embedding model (~90 MB) and seeds a demo
+agent, so give it a minute. Then sign in and paste your Groq key via **⚙ Groq key**
+(get a free one at [console.groq.com/keys](https://console.groq.com/keys)).
 
-```bash
-docker compose ps          # должны быть healthy
-docker compose logs -f backend
-```
+### Demo login (seeded automatically)
 
-### Демо-доступ (создаётся автоматически через seed)
-
-- **Email:** `demo@aiap.dev`
-- **Пароль:** `demo1234`
-- Под этим пользователем уже есть агент **«Помощник по продукту»** с двумя
-  проиндексированными документами — можно сразу задавать вопросы, например:
-  *«Какие модели использует платформа?»* или *«Как запустить платформу?»*.
+- **Email:** `demo@aiap.dev` · **Password:** `demo1234`
+- Comes with a ready agent **"Помощник по продукту"** and two indexed documents —
+  ask it something like *"Which models does the platform use?"*.
 
 ---
 
-## Как это работает
+## How it works
 
-### RAG-пайплайн (от документа до ответа)
+**RAG ingestion** (`backend/src/documents`, `backend/src/rag`)
+`file → text → chunk (≈900 chars, 150 overlap) → 384-d embedding → pgvector`.
+Search runs exact cosine KNN (`embedding <=> query`), accelerated by an HNSW index.
 
-1. **Загрузка** (`documents.service.ts`): файл (TXT/MD/PDF) → текст.
-2. **Чанкинг** (`documents/chunking.ts`): режем по абзацам/предложениям на
-   куски ~900 символов с перекрытием 150 — чтобы мысль на границе не терялась.
-3. **Эмбеддинги** (`rag/embeddings.service.ts`): каждый чанк → вектор 384-d
-   (локальная модель, mean-pooling + L2-нормализация).
-4. **Хранение** (`rag/retrieval.service.ts`): чанк + вектор пишутся в колонку
-   `Chunk.embedding` типа `vector(384)` (raw SQL — Prisma не сериализует vector).
-5. **Поиск**: запрос → вектор → top-k ближайших чанков по косинусному
-   расстоянию (`embedding <=> query`), ускоряется HNSW-индексом.
+**Agent orchestration** (`backend/src/chat/graph.ts`)
+A LangGraph `StateGraph` runs `retrieve → agent → tools` in a ReAct loop. The model
+either answers or calls `search_knowledge_base` for more context; the loop is bounded
+by a max-iteration guard.
 
-### Граф агента (LangGraph)
+**Streaming** (`backend/src/chat/chat.service.ts`)
+The graph is read with `streamMode: ["updates","messages"]` and bridged to SSE: node
+updates become **step** events (the steps panel) and LLM tokens become **token**
+events (the live answer). Citations are emitted at the end.
 
-Файл `chat/graph.ts`. Классический ReAct-цикл:
-
-```
-START → retrieve → agent ──(нужен инструмент?)──► tools → agent → ...
-                      └──(нет)──► END
-```
-
-- **retrieve** — первичный поиск по базе знаний, кладёт контекст и цитаты.
-- **agent** — вызывает Groq с привязанным инструментом `search_knowledge_base`.
-  Модель либо отвечает финальным текстом, либо просит вызвать инструмент.
-- **tools** — выполняет доп. поиск по базе и возвращает результат агенту.
-
-Цикл ограничен `MAX_ITERATIONS`, чтобы агент не зациклился.
-
-### Стриминг
-
-`chat/chat.service.ts` читает из графа `streamMode: ["updates","messages"]` и
-отдаёт по SSE два потока: **шаги агента** (для правой панели) и **токены
-ответа** (живой текст в чате). Фронтенд (`lib/chatStream.ts`) читает поток
-через `fetch` + `ReadableStream` (а не `EventSource` — нужен JWT-заголовок).
+**BYOK** (`backend/src/chat/chat.controller.ts`)
+The Groq key arrives per-request in the `x-groq-key` header, is used only to call
+Groq, and is never written to the database or logs. A server-side `GROQ_API_KEY` is
+an optional fallback.
 
 ---
 
-## Структура
+## Project structure
 
 ```
 ai-agent-platform/
-├── docker-compose.yml      # postgres + backend + frontend
-├── .env.example            # шаблон конфигурации
-├── db/init.sql             # CREATE EXTENSION vector
-├── backend/                # NestJS
-│   ├── prisma/             # схема, миграции, seed
+├── docker-compose.yml        # postgres + backend + frontend
+├── db/init.sql               # CREATE EXTENSION vector
+├── backend/                  # NestJS
+│   ├── prisma/               # schema, migration, seed
 │   └── src/
-│       ├── auth/           # JWT (register/login/me)
-│       ├── agents/         # CRUD агентов
-│       ├── documents/      # upload + чанкинг + индексация
-│       ├── rag/            # эмбеддинги + векторный поиск (pgvector)
-│       └── chat/           # LangGraph + Groq + SSE
-└── frontend/               # Next.js (дашборд, чат, шаги, документы)
+│       ├── auth/  agents/  documents/
+│       ├── rag/              # embeddings + pgvector search
+│       └── chat/             # LangGraph + Groq + SSE
+└── frontend/                 # Next.js (dashboard, chat, steps, upload)
 ```
 
 ---
 
-## API (вкратце)
+## Roadmap
 
-| Метод | Путь                                  | Описание                       |
-|-------|---------------------------------------|--------------------------------|
-| POST  | `/auth/register` · `/auth/login`      | регистрация / вход (JWT)       |
-| GET   | `/agents`                             | список агентов                 |
-| POST  | `/agents`                             | создать агента                 |
-| POST  | `/agents/:id/documents`              | загрузить документ (multipart) |
-| POST  | `/agents/:id/chat`                    | чат (SSE-стрим)                |
-| GET   | `/agents/:id/chat/history`            | история диалога                |
-
-Все эндпоинты, кроме `auth`, требуют заголовок `Authorization: Bearer <token>`.
+- [ ] Live hosted demo (Vercel + Railway)
+- [ ] Streaming markdown rendering in chat
+- [ ] Per-agent model selection
+- [ ] Re-ranking on top of vector search
 
 ---
 
-## Локальная разработка (без Docker)
+## License
 
-```bash
-# Postgres всё равно проще через Docker:
-docker compose up -d postgres
-
-# Backend
-cd backend
-npm install
-export DATABASE_URL="postgresql://aiap:aiap_password@localhost:5433/aiap?schema=public"
-npx prisma migrate deploy
-npm run seed
-npm run start:dev          # http://localhost:4000
-
-# Frontend (в другом терминале)
-cd frontend
-npm install
-npm run dev                # http://localhost:3000
-```
-
----
-
-## Частые проблемы
-
-- **Чат отвечает ошибкой про GROQ_API_KEY** — не вписан/неверный ключ в `.env`.
-  Возьми бесплатный на https://console.groq.com/keys и пересоздай backend:
-  `docker compose up -d --build backend`.
-- **Порт 5432 занят** — локально уже крутится Postgres. Поменяй `POSTGRES_PORT`
-  в `.env` (по умолчанию здесь `5433`); на внутреннюю сеть это не влияет.
-- **Первый ответ медленный** — backend догружает модель эмбеддингов. Дальше быстро.
-```
+MIT

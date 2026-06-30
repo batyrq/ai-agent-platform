@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="420" viewBox="0 0 820 420" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="820" height="420" rx="14" fill="#0b1020"/>
+  <rect x="1" y="1" width="818" height="418" rx="14" fill="none" stroke="#2a3556"/>
+
+  <!-- header -->
+  <text x="28" y="44" fill="#e7ecf5" font-size="20" font-weight="600">AI Agent Platform</text>
+  <rect x="660" y="26" width="132" height="30" rx="8" fill="#11182e" stroke="#2a3556"/>
+  <circle cx="680" cy="41" r="4" fill="#34d399"/>
+  <text x="694" y="45" fill="#cbd5e1" font-size="12">Groq key</text>
+
+  <!-- left: documents -->
+  <rect x="20" y="72" width="200" height="328" rx="10" fill="#11182e" stroke="#22304f"/>
+  <text x="36" y="98" fill="#9aa7c2" font-size="12" font-weight="600">Knowledge base</text>
+  <rect x="36" y="112" width="168" height="34" rx="7" fill="#0b1020" stroke="#22304f"/>
+  <text x="48" y="133" fill="#cbd5e1" font-size="11">product-overview.md</text>
+  <rect x="36" y="152" width="168" height="34" rx="7" fill="#0b1020" stroke="#22304f"/>
+  <text x="48" y="173" fill="#cbd5e1" font-size="11">faq.md</text>
+
+  <!-- center: chat -->
+  <rect x="232" y="72" width="356" height="328" rx="10" fill="#0e1530" stroke="#22304f"/>
+  <rect x="360" y="92" width="212" height="40" rx="12" fill="#4f46e5"/>
+  <text x="376" y="117" fill="#ffffff" font-size="12">Which models does it use?</text>
+  <rect x="248" y="146" width="300" height="118" rx="12" fill="#11182e" stroke="#2a3556"/>
+  <text x="264" y="170" fill="#e7ecf5" font-size="12">Generation runs on Groq (Llama 3.3</text>
+  <text x="264" y="190" fill="#e7ecf5" font-size="12">70B). Embeddings are computed</text>
+  <text x="264" y="210" fill="#e7ecf5" font-size="12">locally with all-MiniLM-L6-v2</text>
+  <text x="264" y="230" fill="#818cf8" font-size="12">[1] faq.md   ·   [2] product-overview.md</text>
+  <rect x="248" y="350" width="324" height="34" rx="9" fill="#0b1020" stroke="#2a3556"/>
+  <text x="262" y="372" fill="#64748b" font-size="12">Ask something…</text>
+
+  <!-- right: steps -->
+  <rect x="600" y="72" width="200" height="328" rx="10" fill="#11182e" stroke="#22304f"/>
+  <text x="616" y="98" fill="#9aa7c2" font-size="12" font-weight="600">Agent steps</text>
+  <circle cx="624" cy="124" r="4" fill="#818cf8"/>
+  <text x="638" y="128" fill="#cbd5e1" font-size="11">🔍 Search knowledge base</text>
+  <circle cx="624" cy="156" r="4" fill="#818cf8"/>
+  <text x="638" y="160" fill="#cbd5e1" font-size="11">🧠 Call tool</text>
+  <circle cx="624" cy="188" r="4" fill="#818cf8"/>
+  <text x="638" y="192" fill="#cbd5e1" font-size="11">🛠️ search_knowledge_base</text>
+  <circle cx="624" cy="220" r="4" fill="#34d399"/>
+  <text x="638" y="224" fill="#cbd5e1" font-size="11">🧠 Synthesize answer</text>
+</svg>
