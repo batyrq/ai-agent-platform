@@ -1,7 +1,7 @@
-// Prisma schema для AI Agent Platform.
-// Векторный столбец у Chunk объявлен как Unsupported("vector(384)") —
-// Prisma создаёт колонку нужного типа, но читаем/пишем мы её через raw SQL
-// (Prisma Client не сериализует тип vector сам).
+// Prisma schema for the AI Agent Platform.
+// The vector column on Chunk is declared as Unsupported("vector(384)") —
+// Prisma creates the column with the right type, but we read/write it via raw SQL
+// (Prisma Client cannot serialize the vector type itself).
 
 generator client {
   provider        = "prisma-client-js"
@@ -17,7 +17,7 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
-  password  String // bcrypt-хэш
+  password  String // bcrypt hash
   name      String?
   createdAt DateTime @default(now())
 
@@ -28,8 +28,8 @@ model Agent {
   id           String   @id @default(uuid())
   name         String
   description  String?
-  // Системный промпт — задаёт характер агента и правила ответа.
-  systemPrompt String   @default("Ты — полезный ассистент. Отвечай кратко и по делу, опираясь на базу знаний и приводя цитаты.")
+  // System prompt — defines the agent's persona and answering rules.
+  systemPrompt String   @default("You are a helpful assistant. Answer concisely and to the point, based on the knowledge base and citing your sources.")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -46,7 +46,7 @@ model Document {
   id        String   @id @default(uuid())
   filename  String
   mimeType  String
-  // Кол-во чанков, на которые разбит документ (для отображения в UI).
+  // Number of chunks the document was split into (shown in the UI).
   chunkCount Int     @default(0)
   createdAt DateTime @default(now())
 
@@ -60,10 +60,10 @@ model Document {
 model Chunk {
   id        String   @id @default(uuid())
   content   String
-  // Порядковый номер чанка в документе — используется в цитатах.
+  // Position of the chunk within the document — used in citations.
   chunkIndex Int     @default(0)
-  // Векторное представление content. Тип vector(384) из pgvector.
-  // Не трогаем через Prisma Client — только raw SQL.
+  // Vector representation of content. Type vector(384) from pgvector.
+  // Never touched via Prisma Client — raw SQL only.
   embedding Unsupported("vector(384)")?
   createdAt DateTime @default(now())
 
@@ -80,7 +80,7 @@ model Message {
   id        String   @id @default(uuid())
   role      String // "user" | "assistant"
   content   String
-  // JSON со списком шагов агента и цитатами (для воспроизведения в UI).
+  // JSON with the agent's steps and citations (for replaying them in the UI).
   meta      Json?
   createdAt DateTime @default(now())
 

@@ -5,17 +5,19 @@ import { AgentStep, Citation } from './types';
 export interface ChatStreamHandlers {
   onStep?: (step: AgentStep) => void;
   onToken?: (text: string) => void;
+  /** The draft before the tool call was cancelled — clear the answer text. */
+  onReset?: () => void;
   onCitations?: (citations: Citation[]) => void;
   onDone?: () => void;
   onError?: (message: string) => void;
 }
 
 /**
- * Отправляет вопрос и читает SSE-ответ через fetch + ReadableStream.
+ * Sends the question and reads the SSE response via fetch + ReadableStream.
  *
- * Используем fetch (а не EventSource), потому что нужен Authorization-заголовок,
- * которого EventSource не поддерживает. Парсим SSE вручную: события разделены
- * пустой строкой, внутри — строки "event:" и "data:".
+ * We use fetch (not EventSource) because we need an Authorization header,
+ * which EventSource does not support. SSE is parsed by hand: events are
+ * separated by a blank line, and contain "event:" and "data:" lines.
  */
 export async function streamChat(
   agentId: string,
@@ -27,14 +29,14 @@ export async function streamChat(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getToken()}`,
-      // BYOK: пользовательский ключ Groq. На сервере не сохраняется.
+      // BYOK: the user's own Groq key. Never stored on the server.
       'x-groq-key': getGroqKey(),
     },
     body: JSON.stringify({ message }),
   });
 
   if (!res.ok || !res.body) {
-    handlers.onError?.(`Ошибка соединения (${res.status})`);
+    handlers.onError?.(`Connection error (${res.status})`);
     return;
   }
 
@@ -47,7 +49,7 @@ export async function streamChat(
     try {
       parsed = JSON.parse(data);
     } catch {
-      /* оставляем строкой */
+      /* keep it as a string */
     }
     switch (event) {
       case 'step':
@@ -56,6 +58,9 @@ export async function streamChat(
       case 'token':
         handlers.onToken?.(parsed.text ?? '');
         break;
+      case 'reset':
+        handlers.onReset?.();
+        break;
       case 'citations':
         handlers.onCitations?.(parsed);
         break;
@@ -63,7 +68,7 @@ export async function streamChat(
         handlers.onDone?.();
         break;
       case 'error':
-        handlers.onError?.(parsed.message ?? 'Ошибка');
+        handlers.onError?.(parsed.message ?? 'Error');
         break;
     }
   };
@@ -73,7 +78,7 @@ export async function streamChat(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // Разбираем все полные SSE-сообщения (разделитель — пустая строка).
+    // Parse every complete SSE message (separated by a blank line).
     let idx;
     while ((idx = buffer.indexOf('\n\n')) !== -1) {
       const raw = buffer.slice(0, idx);

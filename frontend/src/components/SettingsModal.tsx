@@ -44,7 +44,7 @@ export default function SettingsModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Настройки</h2>
+          <h2 className="text-lg font-semibold">Settings</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-200"
@@ -68,12 +68,12 @@ export default function SettingsModal({
             onClick={() => setShow(!show)}
             className="rounded-lg border border-slate-700 px-3 text-xs text-slate-300 hover:bg-slate-800"
           >
-            {show ? 'Скрыть' : 'Показать'}
+            {show ? 'Hide' : 'Show'}
           </button>
         </div>
 
         <p className="mt-2 text-xs text-slate-400">
-          Бесплатный ключ:{' '}
+          Free key:{' '}
           <a
             href="https://console.groq.com/keys"
             target="_blank"
@@ -85,10 +85,10 @@ export default function SettingsModal({
         </p>
 
         <div className="mt-3 rounded-lg border border-slate-700 bg-ink/60 p-3 text-xs text-slate-400">
-          🔒 Ключ хранится <span className="text-slate-200">только в этом
-          браузере</span> (localStorage) и отправляется на сервер лишь для
-          вызова модели. На сервере он <span className="text-slate-200">не
-          сохраняется и не логируется</span>.
+          🔒 The key is stored <span className="text-slate-200">only in this
+          browser</span> (localStorage) and is sent to the server only to call
+          the model. On the server it is <span className="text-slate-200">never
+          saved or logged</span>.
         </div>
 
         <div className="mt-5 flex items-center justify-between">
@@ -96,20 +96,20 @@ export default function SettingsModal({
             onClick={remove}
             className="text-xs text-slate-500 hover:text-red-400"
           >
-            Удалить ключ
+            Remove key
           </button>
           <div className="flex gap-2">
             <button
               onClick={onClose}
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
             >
-              Отмена
+              Cancel
             </button>
             <button
               onClick={save}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500"
             >
-              {saved ? 'Сохранено ✓' : 'Сохранить'}
+              {saved ? 'Saved ✓' : 'Save'}
             </button>
           </div>
         </div>

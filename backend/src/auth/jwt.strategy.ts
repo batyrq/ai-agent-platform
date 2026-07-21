@@ -17,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // Возвращаемое значение кладётся в request.user.
+  // The returned value is placed on request.user.
   async validate(payload: JwtPayload) {
     return { userId: payload.sub, email: payload.email };
   }

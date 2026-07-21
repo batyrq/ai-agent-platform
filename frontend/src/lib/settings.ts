@@ -1,6 +1,6 @@
-// BYOK: ключ Groq хранится ТОЛЬКО в браузере пользователя (localStorage).
-// На сервер он уходит лишь в заголовке x-groq-key при каждом запросе чата
-// и там не сохраняется. См. backend: chat.controller.ts / chat.service.ts.
+// BYOK: the Groq key is stored ONLY in the user's browser (localStorage).
+// It goes to the server just in the x-groq-key header on each chat request
+// and is not stored there. See backend: chat.controller.ts / chat.service.ts.
 
 const GROQ_KEY = 'aiap_groq_key';
 

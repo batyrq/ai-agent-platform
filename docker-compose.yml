@@ -1,5 +1,5 @@
 services:
-  # --- PostgreSQL с расширением pgvector (хранилище данных + векторный поиск) ---
+  # --- PostgreSQL with the pgvector extension (data store + vector search) ---
   postgres:
     image: pgvector/pgvector:pg16
     container_name: aiap-postgres
@@ -11,7 +11,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # init.sql включает расширение pgvector при первой инициализации БД
+      # init.sql enables the pgvector extension on first DB initialization
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aiap} -d ${POSTGRES_DB:-aiap}"]
@@ -45,7 +45,7 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # --- Next.js frontend (дашборд + чат со стримингом) ---
+  # --- Next.js frontend (dashboard + streaming chat) ---
   frontend:
     build:
       context: ./frontend

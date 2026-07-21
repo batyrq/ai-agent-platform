@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/api';
 
-// Корневая страница: решает, куда отправить — на вход или в дашборд.
+// Root page: decides where to send the user — to login or to the dashboard.
 export default function Home() {
   const router = useRouter();
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function Home() {
 
   return (
     <main className="flex h-screen items-center justify-center text-slate-400">
-      Загрузка…
+      Loading…
     </main>
   );
 }

@@ -25,7 +25,7 @@ export default function AgentPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [keySet, setKeySet] = useState(false);
 
-  // Отслеживаем наличие ключа (для баннера и подсказки).
+  // Track whether a key is present (for the banner and the hint).
   useEffect(() => {
     setKeySet(hasGroqKey());
   }, [settingsOpen]);
@@ -107,6 +107,10 @@ export default function AgentPage() {
       onToken: (t) => {
         updateLast({ content: (assistantMsg.content += t) });
       },
+      onReset: () => {
+        assistantMsg.content = '';
+        updateLast({ content: '' });
+      },
       onCitations: (c: Citation[]) => updateLast({ citations: c }),
       onDone: () => {
         updateLast({ streaming: false });
@@ -136,11 +140,11 @@ export default function AgentPage() {
             href="/dashboard"
             className="text-slate-400 hover:text-slate-200"
           >
-            ← Агенты
+            ← Agents
           </Link>
           <div>
             <h1 className="text-base font-semibold">
-              {agent?.name || 'Агент'}
+              {agent?.name || 'Agent'}
             </h1>
             <p className="text-xs text-slate-500">
               {agent?.description || ''}
@@ -157,21 +161,21 @@ export default function AgentPage() {
               'h-2 w-2 rounded-full ' +
               (keySet ? 'bg-emerald-400' : 'bg-amber-400')
             }
-            title={keySet ? 'Ключ задан' : 'Ключ не задан'}
+            title={keySet ? 'Key is set' : 'Key is not set'}
           />
         </button>
       </header>
 
       {!keySet && (
         <div className="border-b border-amber-500/30 bg-amber-500/10 px-5 py-2 text-xs text-amber-300">
-          Чтобы агент отвечал, укажите свой Groq API key в{' '}
+          To let the agent answer, add your Groq API key in{' '}
           <button
             onClick={() => setSettingsOpen(true)}
             className="font-medium underline"
           >
-            Настройках
+            Settings
           </button>
-          . Ключ хранится только в вашем браузере.
+          . The key is stored only in your browser.
         </div>
       )}
 
@@ -181,7 +185,7 @@ export default function AgentPage() {
       />
 
       <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[280px_1fr_320px]">
-        {/* Левая колонка: документы */}
+        {/* Left column: documents */}
         <aside className="hidden border-r border-slate-800 p-4 lg:block">
           <DocumentsPanel
             agentId={agentId}
@@ -189,7 +193,7 @@ export default function AgentPage() {
           />
         </aside>
 
-        {/* Центр: чат */}
+        {/* Center: chat */}
         <section className="flex min-h-0 flex-col">
           <div
             ref={scrollRef}
@@ -197,8 +201,8 @@ export default function AgentPage() {
           >
             {messages.length === 0 && (
               <div className="mt-10 text-center text-sm text-slate-500">
-                Задайте вопрос — агент найдёт ответ в базе знаний и приведёт
-                цитаты.
+                Ask a question — the agent will find the answer in the knowledge
+                base and cite its sources.
               </div>
             )}
             {messages.map((m) => (
@@ -228,7 +232,7 @@ export default function AgentPage() {
                     m.citations.length > 0 && (
                       <div className="mt-3 space-y-1 border-t border-slate-700 pt-2">
                         <p className="text-[11px] font-semibold text-slate-400">
-                          Источники:
+                          Sources:
                         </p>
                         {m.citations.map((c) => (
                           <div
@@ -239,7 +243,7 @@ export default function AgentPage() {
                             <span className="text-indigo-400">[{c.index}]</span>{' '}
                             {c.filename}{' '}
                             <span className="text-slate-600">
-                              · близость {Math.round(c.score * 100)}%
+                              · similarity {Math.round(c.score * 100)}%
                             </span>
                           </div>
                         ))}
@@ -256,7 +260,7 @@ export default function AgentPage() {
           >
             <input
               className="flex-1 rounded-lg border border-slate-700 bg-ink px-3 py-2 text-sm outline-none focus:border-indigo-500"
-              placeholder="Спросите что-нибудь…"
+              placeholder="Ask something…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={streaming}
@@ -265,7 +269,7 @@ export default function AgentPage() {
               disabled={streaming || !input.trim()}
               className="rounded-lg bg-indigo-600 px-5 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
             >
-              {streaming ? '…' : 'Отправить'}
+              {streaming ? '…' : 'Send'}
             </button>
           </form>
           {error && (
@@ -273,7 +277,7 @@ export default function AgentPage() {
           )}
         </section>
 
-        {/* Правая колонка: шаги агента */}
+        {/* Right column: agent steps */}
         <aside className="hidden border-l border-slate-800 p-4 lg:block">
           <StepsPanel steps={stepsToShow} live={streaming} />
         </aside>

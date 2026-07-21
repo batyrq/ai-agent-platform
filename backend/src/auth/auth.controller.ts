@@ -18,7 +18,7 @@ export class AuthController {
     return this.auth.login(dto);
   }
 
-  // Проверка токена / получение текущего пользователя.
+  // Validates the token / returns the current user.
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: AuthUser) {

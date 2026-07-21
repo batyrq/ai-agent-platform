@@ -1,12 +1,12 @@
 /**
- * Разбиение текста на чанки для RAG.
+ * Splitting text into chunks for RAG.
  *
- * Идея: режем по абзацам/предложениям и склеиваем в куски примерно по
- * `chunkSize` символов с перекрытием `overlap`. Перекрытие нужно, чтобы
- * мысль, попавшая на границу двух чанков, не потерялась при поиске.
+ * The idea: cut on paragraph/sentence boundaries and glue the pieces into
+ * chunks of roughly `chunkSize` characters with an `overlap`. The overlap keeps
+ * a thought that falls on the border of two chunks from getting lost in search.
  *
- * Это намеренно простой, предсказуемый алгоритм (никаких токенайзеров) —
- * его легко чинить и настраивать под конкретного клиента.
+ * This is a deliberately simple, predictable algorithm (no tokenizers) —
+ * easy to debug and to tune for a specific customer.
  */
 export function chunkText(
   text: string,
@@ -16,14 +16,14 @@ export function chunkText(
   const clean = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   if (!clean) return [];
 
-  // Кандидаты на границы — абзацы, затем предложения внутри длинных абзацев.
+  // Boundary candidates: paragraphs, then sentences inside long paragraphs.
   const paragraphs = clean.split(/\n\s*\n/);
   const pieces: string[] = [];
   for (const p of paragraphs) {
     if (p.length <= chunkSize) {
       pieces.push(p.trim());
     } else {
-      // Длинный абзац дополнительно режем по предложениям.
+      // A long paragraph is split further, by sentences.
       const sentences = p.split(/(?<=[.!?。])\s+/);
       let buf = '';
       for (const s of sentences) {
@@ -38,13 +38,13 @@ export function chunkText(
     }
   }
 
-  // Склейка мелких кусков в чанки ~chunkSize с перекрытием.
+  // Merge the small pieces into ~chunkSize chunks with overlap.
   const chunks: string[] = [];
   let current = '';
   for (const piece of pieces) {
     if ((current + '\n\n' + piece).length > chunkSize && current) {
       chunks.push(current.trim());
-      // Перекрытие: хвост предыдущего чанка переносим в начало следующего.
+      // Overlap: the tail of the previous chunk starts the next one.
       const tail = current.slice(-overlap);
       current = `${tail}\n\n${piece}`;
     } else {

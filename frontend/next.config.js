@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // standalone — компактный self-contained сервер для Docker-образа.
+  // standalone — a compact self-contained server for the Docker image.
   output: 'standalone',
 };
 

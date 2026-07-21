@@ -24,10 +24,10 @@ export class ChatController {
     return this.chat.getHistory(user.userId, agentId);
   }
 
-  // SSE-стрим. Фронтенд читает ответ через fetch + ReadableStream
-  // (а не EventSource), чтобы можно было передать Authorization-заголовок.
-  // BYOK: ключ Groq передаётся клиентом в заголовке x-groq-key.
-  // Он не сохраняется на сервере — только пробрасывается в вызов Groq.
+  // SSE stream. The frontend reads the response via fetch + ReadableStream
+  // (not EventSource), so it can send an Authorization header.
+  // BYOK: the client passes the Groq key in the x-groq-key header.
+  // It is not stored on the server — only forwarded into the Groq call.
   @Post()
   async send(
     @CurrentUser() user: AuthUser,

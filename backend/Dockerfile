@@ -1,24 +1,24 @@
-# Backend образ (NestJS). Debian-slim — у onnxruntime-node (зависимость
-# @xenova/transformers) нет готовых бинарников под musl/alpine.
+# Backend image (NestJS). Debian-slim because onnxruntime-node (a dependency
+# of @xenova/transformers) ships no prebuilt binaries for musl/alpine.
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Системные зависимости: openssl нужен Prisma.
+# System dependencies: Prisma needs openssl.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Сначала только манифесты — лучше кэшируется слой с npm install.
+# Manifests first — keeps the npm install layer cacheable.
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Исходники + схема Prisma.
+# Sources + Prisma schema.
 COPY . .
 
-# Генерируем Prisma Client и собираем NestJS.
+# Generate the Prisma Client and build NestJS.
 RUN npx prisma generate && npm run build
 
-# Кэш моделей @xenova/transformers (скачиваются один раз при первом запросе).
+# Model cache for @xenova/transformers (downloaded once, on the first request).
 ENV TRANSFORMERS_CACHE=/app/.cache/transformers
 RUN mkdir -p /app/.cache/transformers
 

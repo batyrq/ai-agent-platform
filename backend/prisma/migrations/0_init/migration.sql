@@ -17,7 +17,7 @@ CREATE TABLE "Agent" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
-    "systemPrompt" TEXT NOT NULL DEFAULT 'Ты — полезный ассистент. Отвечай кратко и по делу, опираясь на базу знаний и приводя цитаты.',
+    "systemPrompt" TEXT NOT NULL DEFAULT 'You are a helpful assistant. Answer concisely and to the point, based on the knowledge base and citing your sources.',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
@@ -95,7 +95,7 @@ ALTER TABLE "Chunk" ADD CONSTRAINT "Chunk_agentId_fkey" FOREIGN KEY ("agentId") 
 -- AddForeignKey
 ALTER TABLE "Message" ADD CONSTRAINT "Message_agentId_fkey" FOREIGN KEY ("agentId") REFERENCES "Agent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Векторный индекс HNSW для семантического поиска по косинусной близости.
--- Ускоряет ORDER BY embedding <=> query. Для демо-объёмов не критичен,
--- но включаем сразу, чтобы поиск масштабировался под реальные базы знаний.
+-- HNSW vector index for semantic search by cosine similarity.
+-- Speeds up ORDER BY embedding <=> query. Not critical at demo volumes,
+-- but enabled up front so search scales to real-world knowledge bases.
 CREATE INDEX "Chunk_embedding_hnsw_idx" ON "Chunk" USING hnsw ("embedding" vector_cosine_ops);

@@ -36,18 +36,18 @@ export class ChatService {
   }
 
   /**
-   * Прогоняет вопрос через LangGraph-граф и отдаёт результат потоком (SSE).
+   * Runs the question through the LangGraph graph and streams the result (SSE).
    *
-   * Из графа берём ДВА вида событий через streamMode ["updates","messages"]:
-   *   • updates  → шаги агента (retrieve / agent / tools) для визуализации;
-   *   • messages → токены финального ответа LLM (живой стриминг в чат).
+   * We take TWO kinds of events from the graph via streamMode ["updates","messages"]:
+   *   • updates  → agent steps (retrieve / agent / tools) for visualization;
+   *   • messages → tokens of the final LLM answer (live streaming into the chat).
    *
-   * Протокол SSE (event: data):
-   *   step      — очередной шаг агента
-   *   token     — кусочек текста ответа
-   *   citations — список источников
-   *   done      — финал (с id сохранённого сообщения)
-   *   error     — ошибка (например, не задан GROQ_API_KEY)
+   * SSE protocol (event: data):
+   *   step      — the next agent step
+   *   token     — a piece of the answer text
+   *   citations — the list of sources
+   *   done      — the end (with the id of the saved message)
+   *   error     — a failure (e.g. GROQ_API_KEY is not set)
    */
   async streamChat(
     userId: string,
@@ -58,14 +58,14 @@ export class ChatService {
   ) {
     const agent = await this.agents.assertOwned(userId, agentId);
 
-    // BYOK: ключ из заголовка x-groq-key имеет приоритет; серверный
-    // GROQ_API_KEY из env — опциональный фоллбэк. Ключ используется только
-    // здесь, для вызова Groq, и НИКУДА не сохраняется и не логируется.
+    // BYOK: the key from the x-groq-key header takes priority; the server-side
+    // GROQ_API_KEY from env is an optional fallback. The key is used only
+    // here, to call Groq, and is NEVER stored or logged.
     const userKey = (groqKey || '').trim();
     const apiKey = userKey || process.env.GROQ_API_KEY || '';
     const keyValid = apiKey.length > 0 && !apiKey.includes('replace');
 
-    // Настройка SSE-заголовков.
+    // SSE header setup.
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -84,18 +84,18 @@ export class ChatService {
     };
 
     try {
-      // Нет валидного ключа → понятная ошибка, без краша.
+      // No valid key → a clear error instead of a crash.
       if (!keyValid) {
         send('error', {
           message:
-            'Не указан Groq API key. Откройте «Настройки» и вставьте свой ' +
-            'ключ (бесплатно: https://console.groq.com/keys). Ключ хранится ' +
-            'только в вашем браузере и не сохраняется на сервере.',
+            'No Groq API key set. Open “Settings” and paste your own key ' +
+            '(free at https://console.groq.com/keys). The key is stored only ' +
+            'in your browser and is never saved on the server.',
         });
         return;
       }
 
-      // История последних сообщений — для связности диалога.
+      // The most recent messages — to keep the conversation coherent.
       const history = await this.prisma.message.findMany({
         where: { agentId },
         orderBy: { createdAt: 'desc' },
@@ -105,10 +105,11 @@ export class ChatService {
 
       const systemPrompt =
         `${agent.systemPrompt}\n\n` +
-        'Отвечай на основе контекста из базы знаний. Если используешь информацию ' +
-        'из источника, ставь ссылку вида [1], [2] сразу после утверждения. ' +
-        'Если контекста не хватает — вызови инструмент search_knowledge_base. ' +
-        'Если ответа нет в базе знаний — честно скажи об этом.';
+        'Answer based on the context from the knowledge base. When you use ' +
+        'information from a source, put a citation like [1], [2] right after ' +
+        'the statement. If the context is not enough, call the ' +
+        'search_knowledge_base tool. If the answer is not in the knowledge ' +
+        'base, say so honestly.';
 
       const lcHistory = history.map((m) =>
         m.role === 'user'
@@ -140,29 +141,42 @@ export class ChatService {
         const [mode, data] = chunk as [string, any];
 
         if (mode === 'updates') {
-          // data = { имяУзла: частичноеОбновлениеСостояния }
+          // data = { nodeName: partialStateUpdate }
           for (const [node, update] of Object.entries<any>(data)) {
             if (node === 'retrieve') {
               const n = update?.citations?.length || 0;
               emitStep({
                 node,
-                title: 'Поиск в базе знаний',
-                detail: `Найдено фрагментов: ${n}`,
+                title: 'Searching the knowledge base',
+                detail: `Chunks found: ${n}`,
               });
               if (update?.citations) citations = update.citations;
             } else if (node === 'agent') {
               const last = update?.messages?.[update.messages.length - 1];
               const toolCalls = last?.tool_calls || [];
               if (toolCalls.length > 0) {
+                // This pass through the agent node ended in a tool call —
+                // so its text was only reasoning along the way ("let me
+                // search..."), not an answer. Drop what we accumulated and ask
+                // the client to clear the bubble, otherwise the final answer
+                // gets glued to the draft and duplicated.
+                answer = '';
+                send('reset', {});
                 emitStep({
                   node,
-                  title: 'Агент решил вызвать инструмент',
+                  title: 'Agent decided to call a tool',
+                  // The tool-call arguments may not have arrived in the streamed
+                  // update yet — in that case just show the tool name,
+                  // without empty parentheses.
                   detail: toolCalls
-                    .map((t: any) => `${t.name}(${t.args?.query ?? ''})`)
+                    .map((t: any) => {
+                      const q = t.args?.query;
+                      return q ? `${t.name}("${q}")` : t.name;
+                    })
                     .join(', '),
                 });
               } else {
-                emitStep({ node, title: 'Синтез ответа' });
+                emitStep({ node, title: 'Synthesizing the answer' });
               }
             } else if (node === 'tools') {
               if (update?.citations?.length) {
@@ -170,15 +184,15 @@ export class ChatService {
               }
               emitStep({
                 node,
-                title: 'Выполнение инструмента',
+                title: 'Running tool',
                 detail: 'search_knowledge_base',
               });
             }
           }
         } else if (mode === 'messages') {
-          // data = [messageChunk, metadata]. Стримим токены ТОЛЬКО узла
-          // "agent" (финальный синтез LLM). Иначе в поток просочится текст
-          // из ToolMessage — сырые найденные фрагменты, а не ответ модели.
+          // data = [messageChunk, metadata]. Stream tokens ONLY from the
+          // "agent" node (the final LLM synthesis). Otherwise ToolMessage text
+          // leaks into the stream — raw retrieved chunks, not the model's answer.
           const [msgChunk, meta] = data as [any, any];
           const fromAgent = meta?.langgraph_node === 'agent';
           const content =
@@ -190,10 +204,10 @@ export class ChatService {
         }
       }
 
-      // Отдаём итоговые источники.
+      // Send the final list of sources.
       send('citations', citations);
 
-      // Сохраняем диалог (вопрос + ответ со steps/citations в meta).
+      // Persist the exchange (question + answer with steps/citations in meta).
       await this.prisma.message.create({
         data: { agentId, role: 'user', content: message },
       });
@@ -208,14 +222,14 @@ export class ChatService {
 
       send('done', { messageId: saved.id });
     } catch (err: any) {
-      this.logger.error(`Ошибка чата: ${err?.message}`, err?.stack);
+      this.logger.error(`Chat error: ${err?.message}`, err?.stack);
       const looksLikeAuth = /api key|apikey|401|unauthor|invalid/i.test(
         String(err?.message),
       );
       const hint = looksLikeAuth
-        ? 'Groq отклонил ключ. Проверьте Groq API key в «Настройках» ' +
-          '(бесплатный ключ: https://console.groq.com/keys).'
-        : String(err?.message || 'Неизвестная ошибка');
+        ? 'Groq rejected the key. Check your Groq API key in “Settings” ' +
+          '(free key: https://console.groq.com/keys).'
+        : String(err?.message || 'Unknown error');
       send('error', { message: hint });
     } finally {
       res.end();

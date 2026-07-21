@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 /**
- * Считает эмбеддинги ЛОКАЛЬНО через @xenova/transformers (Transformers.js).
- * Модель all-MiniLM-L6-v2 → вектор размерности 384.
+ * Computes embeddings LOCALLY via @xenova/transformers (Transformers.js).
+ * The all-MiniLM-L6-v2 model → a 384-dimensional vector.
  *
- * Почему локально, а не через API: Groq отдаёт только LLM-инференс и
- * function-calling, эндпоинта эмбеддингов у него нет. Локальная модель
- * избавляет от второго платного ключа и работает оффлайн (после того, как
- * веса ~90 МБ скачались один раз и легли в кэш).
+ * Why local instead of an API: Groq only offers LLM inference and
+ * function-calling, it has no embeddings endpoint. A local model
+ * removes the need for a second paid key and works offline (once the
+ * ~90 MB weights have been downloaded and cached).
  */
 @Injectable()
 export class EmbeddingsService {
@@ -15,14 +15,14 @@ export class EmbeddingsService {
   private extractorPromise: Promise<any> | null = null;
   readonly dim = 384;
 
-  // @xenova/transformers — ESM-only пакет. Чтобы tsc (target CommonJS) не
-  // превратил import() в require() и не сломал загрузку ESM, прячем импорт
-  // за new Function — он остаётся настоящим динамическим import во время рантайма.
+  // @xenova/transformers is an ESM-only package. To stop tsc (target CommonJS)
+  // from rewriting import() into require() and breaking the ESM load, the import
+  // is hidden behind new Function — it stays a real dynamic import at runtime.
   private async loadExtractor(): Promise<any> {
     if (!this.extractorPromise) {
       const modelName =
         process.env.EMBEDDING_MODEL || 'Xenova/all-MiniLM-L6-v2';
-      this.logger.log(`Загрузка модели эмбеддингов: ${modelName} ...`);
+      this.logger.log(`Loading embedding model: ${modelName} ...`);
       const dynamicImport = new Function('m', 'return import(m)');
       this.extractorPromise = dynamicImport('@xenova/transformers').then(
         (mod: any) => mod.pipeline('feature-extraction', modelName),
@@ -31,15 +31,15 @@ export class EmbeddingsService {
     return this.extractorPromise;
   }
 
-  /** Эмбеддинг одного текста → number[] длины 384 (нормализованный). */
+  /** Embedding of a single text → a normalized number[] of length 384. */
   async embed(text: string): Promise<number[]> {
     const extractor = await this.loadExtractor();
-    // mean pooling + L2-нормализация → сразу пригодно для косинусной близости.
+    // mean pooling + L2 normalization → ready for cosine similarity as-is.
     const output = await extractor(text, { pooling: 'mean', normalize: true });
     return Array.from(output.data as Float32Array);
   }
 
-  /** Пакетный вариант — последовательно, чтобы не упереться в память. */
+  /** Batch variant — sequential, to avoid running out of memory. */
   async embedBatch(texts: string[]): Promise<number[][]> {
     const out: number[][] = [];
     for (const t of texts) {
@@ -48,7 +48,7 @@ export class EmbeddingsService {
     return out;
   }
 
-  /** Сериализация вектора в литерал pgvector: '[0.1,0.2,...]'. */
+  /** Serializes a vector into a pgvector literal: '[0.1,0.2,...]'. */
   toSqlVector(vec: number[]): string {
     return `[${vec.join(',')}]`;
   }

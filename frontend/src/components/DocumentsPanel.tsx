@@ -52,7 +52,7 @@ export default function DocumentsPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <h3 className="mb-3 text-sm font-semibold text-slate-200">База знаний</h3>
+      <h3 className="mb-3 text-sm font-semibold text-slate-200">Knowledge base</h3>
 
       <label className="mb-3 block cursor-pointer rounded-lg border border-dashed border-slate-600 bg-ink/50 p-4 text-center text-xs text-slate-400 hover:border-indigo-500">
         <input
@@ -66,10 +66,10 @@ export default function DocumentsPanel({
           }}
         />
         {uploading ? (
-          <span>Индексация… (чанкинг + эмбеддинги)</span>
+          <span>Indexing… (chunking + embeddings)</span>
         ) : (
           <span>
-            ⬆ Загрузить документ
+            ⬆ Upload a document
             <br />
             <span className="text-slate-500">TXT · MD · PDF</span>
           </span>
@@ -81,7 +81,7 @@ export default function DocumentsPanel({
       <div className="scroll-thin flex-1 space-y-2 overflow-y-auto">
         {docs.length === 0 ? (
           <p className="text-xs text-slate-500">
-            Документов пока нет. Загрузите файл, чтобы агент мог на него ссылаться.
+            No documents yet. Upload a file so the agent can cite it.
           </p>
         ) : (
           docs.map((d) => (
@@ -92,13 +92,13 @@ export default function DocumentsPanel({
               <div className="min-w-0">
                 <p className="truncate text-xs text-slate-200">{d.filename}</p>
                 <p className="text-[11px] text-slate-500">
-                  {d.chunkCount} чанков
+                  {d.chunkCount} chunks
                 </p>
               </div>
               <button
                 onClick={() => remove(d.id)}
                 className="ml-2 text-slate-500 hover:text-red-400"
-                title="Удалить"
+                title="Delete"
               >
                 ✕
               </button>

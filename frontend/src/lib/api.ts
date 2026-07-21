@@ -1,5 +1,5 @@
-// Тонкий клиент к backend. Токен храним в localStorage (демо-уровень;
-// для прода лучше httpOnly-cookie).
+// Thin client for the backend. The token lives in localStorage (demo-grade;
+// an httpOnly cookie would be better in production).
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -26,7 +26,7 @@ function authHeaders(): Record<string, string> {
 
 async function handle(res: Response) {
   if (!res.ok) {
-    let msg = `Ошибка ${res.status}`;
+    let msg = `Error ${res.status}`;
     try {
       const body = await res.json();
       msg = body.message || msg;
@@ -108,7 +108,7 @@ export const api = {
     return handle(
       await fetch(`${API_URL}/agents/${agentId}/documents`, {
         method: 'POST',
-        headers: authHeaders(), // без Content-Type — браузер сам поставит boundary
+        headers: authHeaders(), // no Content-Type — the browser sets the boundary
         body: fd,
       }),
     );

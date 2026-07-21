@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 
-// Global, чтобы PrismaService инжектился в любой модуль без повторного импорта.
+// Global so PrismaService can be injected into any module without re-importing.
 @Global()
 @Module({
   providers: [PrismaService],

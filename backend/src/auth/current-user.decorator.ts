@@ -5,7 +5,7 @@ export interface AuthUser {
   email: string;
 }
 
-// @CurrentUser() извлекает request.user, который положила JwtStrategy.validate().
+// @CurrentUser() extracts request.user, which JwtStrategy.validate() put there.
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthUser => {
     const req = ctx.switchToHttp().getRequest();

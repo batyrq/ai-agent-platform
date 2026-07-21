@@ -20,7 +20,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (existing) {
-      throw new ConflictException('Пользователь с таким email уже существует');
+      throw new ConflictException('A user with this email already exists');
     }
     const hash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
@@ -34,7 +34,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Неверный email или пароль');
+      throw new UnauthorizedException('Invalid email or password');
     }
     return this.issueToken(user.id, user.email, user.name);
   }

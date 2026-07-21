@@ -8,20 +8,20 @@ export interface RetrievedChunk {
   chunkIndex: number;
   documentId: string;
   filename: string;
-  // Косинусная близость в [0..1], чем больше — тем релевантнее.
+  // Cosine similarity in [0..1]; higher means more relevant.
   score: number;
 }
 
 /**
- * Векторный поиск по pgvector.
+ * Vector search over pgvector.
  *
- * Хранение: эмбеддинги лежат в колонке Chunk.embedding типа vector(384).
- * Prisma Client не умеет писать/читать vector, поэтому здесь — только raw SQL.
+ * Storage: embeddings live in the Chunk.embedding column of type vector(384).
+ * Prisma Client cannot read/write vector, so this file uses raw SQL only.
  *
- * Поиск: оператор `<=>` из pgvector считает косинусное РАССТОЯНИЕ
- * (0 = идентичны). Близость = 1 - расстояние. Сортируем по возрастанию
- * расстояния и берём top-k. На объёмах демо точный перебор работает мгновенно;
- * под нагрузкой сюда добавляется ANN-индекс (ivfflat/hnsw) — см. README.
+ * Search: pgvector's `<=>` operator computes cosine DISTANCE
+ * (0 = identical). Similarity = 1 - distance. We sort by ascending
+ * distance and take top-k. At demo volumes an exact scan is instant;
+ * under load an ANN index (ivfflat/hnsw) goes here — see README.
  */
 @Injectable()
 export class RetrievalService {
@@ -30,7 +30,7 @@ export class RetrievalService {
     private readonly embeddings: EmbeddingsService,
   ) {}
 
-  /** Записать чанк вместе с его эмбеддингом (raw SQL из-за типа vector). */
+  /** Insert a chunk together with its embedding (raw SQL because of the vector type). */
   async insertChunk(params: {
     id: string;
     agentId: string;
@@ -40,14 +40,14 @@ export class RetrievalService {
     embedding: number[];
   }): Promise<void> {
     const vec = this.embeddings.toSqlVector(params.embedding);
-    // $executeRaw с параметрами — защита от SQL-инъекций; вектор кастуем к ::vector.
+    // Parameterized $executeRaw guards against SQL injection; the vector is cast to ::vector.
     await this.prisma.$executeRaw`
       INSERT INTO "Chunk" ("id", "agentId", "documentId", "content", "chunkIndex", "embedding", "createdAt")
       VALUES (${params.id}, ${params.agentId}, ${params.documentId}, ${params.content}, ${params.chunkIndex}, ${vec}::vector, NOW())
     `;
   }
 
-  /** Top-k чанков агента, ближайших к запросу. */
+  /** The agent's top-k chunks closest to the query. */
   async search(
     agentId: string,
     query: string,
@@ -57,7 +57,7 @@ export class RetrievalService {
       await this.embeddings.embed(query),
     );
 
-    // JOIN к Document, чтобы вернуть имя файла для цитаты.
+    // JOIN Document to return the filename for the citation.
     const rows = await this.prisma.$queryRaw<
       Array<{
         id: string;

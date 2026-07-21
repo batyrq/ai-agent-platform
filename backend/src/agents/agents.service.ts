@@ -24,7 +24,7 @@ export class AgentsService {
         _count: { select: { documents: true, chunks: true } },
       },
     });
-    if (!agent) throw new NotFoundException('Агент не найден');
+    if (!agent) throw new NotFoundException('Agent not found');
     return agent;
   }
 
@@ -34,14 +34,14 @@ export class AgentsService {
         userId,
         name: dto.name,
         description: dto.description,
-        // Если промпт не задан — берём дефолт из схемы Prisma.
+        // If no prompt is given — fall back to the default in the Prisma schema.
         ...(dto.systemPrompt ? { systemPrompt: dto.systemPrompt } : {}),
       },
     });
   }
 
   async update(userId: string, id: string, dto: UpdateAgentDto) {
-    await this.get(userId, id); // проверка владения
+    await this.get(userId, id); // ownership check
     return this.prisma.agent.update({
       where: { id },
       data: {
@@ -58,12 +58,12 @@ export class AgentsService {
     return { ok: true };
   }
 
-  // Используется chat/documents для проверки, что агент принадлежит юзеру.
+  // Used by chat/documents to verify that the agent belongs to the user.
   async assertOwned(userId: string, id: string) {
     const agent = await this.prisma.agent.findFirst({
       where: { id, userId },
     });
-    if (!agent) throw new NotFoundException('Агент не найден');
+    if (!agent) throw new NotFoundException('Agent not found');
     return agent;
   }
 }

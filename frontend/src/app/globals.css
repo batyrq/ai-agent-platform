@@ -11,7 +11,7 @@ body {
   color: #e7ecf5;
 }
 
-/* Тонкий скроллбар для панелей */
+/* Thin scrollbar for panels */
 .scroll-thin::-webkit-scrollbar {
   width: 8px;
 }

@@ -55,7 +55,7 @@ export default function DashboardPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm('Удалить агента вместе с базой знаний?')) return;
+    if (!confirm('Delete this agent along with its knowledge base?')) return;
     await api.deleteAgent(id);
     load();
   }
@@ -69,9 +69,9 @@ export default function DashboardPage() {
     <main className="mx-auto max-w-5xl p-6">
       <header className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Мои агенты</h1>
+          <h1 className="text-2xl font-semibold">My agents</h1>
           <p className="text-sm text-slate-400">
-            Создавай агентов, загружай документы, общайся в чате с цитатами.
+            Create agents, upload documents, chat with cited answers.
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +85,7 @@ export default function DashboardPage() {
             onClick={logout}
             className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800"
           >
-            Выйти
+            Log out
           </button>
         </div>
       </header>
@@ -99,17 +99,17 @@ export default function DashboardPage() {
         onSubmit={create}
         className="mb-8 rounded-2xl border border-slate-700 bg-panel p-5"
       >
-        <h2 className="mb-3 text-sm font-medium text-slate-200">Новый агент</h2>
+        <h2 className="mb-3 text-sm font-medium text-slate-200">New agent</h2>
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             className="flex-1 rounded-lg border border-slate-700 bg-ink px-3 py-2 text-sm outline-none focus:border-indigo-500"
-            placeholder="Название (напр. «Поддержка по API»)"
+            placeholder="Name (e.g. “API Support”)"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
           <input
             className="flex-1 rounded-lg border border-slate-700 bg-ink px-3 py-2 text-sm outline-none focus:border-indigo-500"
-            placeholder="Описание (необязательно)"
+            placeholder="Description (optional)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -117,17 +117,17 @@ export default function DashboardPage() {
             disabled={creating}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-50"
           >
-            {creating ? '...' : 'Создать'}
+            {creating ? '...' : 'Create'}
           </button>
         </div>
         {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
       </form>
 
       {loading ? (
-        <p className="text-slate-400">Загрузка…</p>
+        <p className="text-slate-400">Loading…</p>
       ) : agents.length === 0 ? (
         <p className="text-slate-400">
-          Пока нет агентов. Создай первого выше 👆
+          No agents yet. Create your first one above 👆
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -139,11 +139,11 @@ export default function DashboardPage() {
               <Link href={`/agents/${a.id}`} className="flex-1">
                 <h3 className="text-lg font-medium">{a.name}</h3>
                 <p className="mt-1 line-clamp-2 text-sm text-slate-400">
-                  {a.description || 'Без описания'}
+                  {a.description || 'No description'}
                 </p>
                 <div className="mt-4 flex gap-4 text-xs text-slate-500">
-                  <span>📄 {a._count?.documents ?? 0} док.</span>
-                  <span>🧩 {a._count?.chunks ?? 0} чанков</span>
+                  <span>📄 {a._count?.documents ?? 0} docs</span>
+                  <span>🧩 {a._count?.chunks ?? 0} chunks</span>
                 </div>
               </Link>
               <div className="mt-4 flex gap-2">
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                   href={`/agents/${a.id}`}
                   className="flex-1 rounded-lg bg-indigo-600 py-1.5 text-center text-sm hover:bg-indigo-500"
                 >
-                  Открыть чат
+                  Open chat
                 </Link>
                 <button
                   onClick={() => remove(a.id)}

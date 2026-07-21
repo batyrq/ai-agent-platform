@@ -23,7 +23,7 @@ export class DocumentsController {
     return this.documents.list(user.userId, agentId);
   }
 
-  // multipart/form-data, поле "file". Файл держим в памяти (memoryStorage по умолчанию).
+  // multipart/form-data, field "file". The file stays in memory (memoryStorage by default).
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   upload(

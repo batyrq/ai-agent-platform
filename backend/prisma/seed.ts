@@ -1,18 +1,20 @@
 /**
- * Seed: создаёт демо-пользователя и демо-агента с парой документов,
- * чтобы платформа работала «из коробки». Идемпотентен — повторный запуск
- * не плодит дубликаты.
+ * Seed: creates a demo user and a demo agent with a couple of documents so the
+ * platform works out of the box. Idempotent — running it again does not
+ * create duplicates.
  *
- * Запуск: npm run seed  (в Docker — автоматически из entrypoint.sh).
+ * Run: npm run seed  (in Docker — automatically from entrypoint.sh).
  */
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import * as bcrypt from 'bcryptjs';
 import { chunkText } from '../src/documents/chunking';
 
 const prisma = new PrismaClient();
 
-// Локальные эмбеддинги (тот же подход, что и в рантайме сервиса).
+// Local embeddings (same approach as in the service at runtime).
 let extractorPromise: Promise<any> | null = null;
 async function embed(text: string): Promise<number[]> {
   if (!extractorPromise) {
@@ -44,56 +46,39 @@ async function ingest(
       VALUES (${randomUUID()}, ${agentId}, ${doc.id}, ${chunks[i]}, ${i}, ${vec}::vector, NOW())
     `;
   }
-  console.log(`  • ${filename}: ${chunks.length} чанков`);
+  console.log(`  • ${filename}: ${chunks.length} chunks`);
 }
 
-// ── Демо-контент базы знаний ────────────────────────────────────────────────
-const DOC_PRODUCT = `AI Agent Platform — обзор продукта
+// ── Demo knowledge base ─────────────────────────────────────────────────────
+// The demo documents live as plain Markdown next to this script, in
+// prisma/seed-docs/. Keeping them as files rather than inline template literals
+// means the knowledge base can grow without turning seed.ts into a wall of text,
+// and the same files are readable on GitHub.
+//
+// Size matters here: first-pass retrieval returns TOP_K = 4 chunks, so a base of
+// only a few chunks would always be retrieved in full and the agent would never
+// need its search_knowledge_base tool. With this document set the base is well
+// past that threshold, which is what makes the multi-step tool-calling path
+// (and the agent step timeline in the UI) actually reachable.
+const SEED_DOCS_DIR = path.join(process.cwd(), 'prisma', 'seed-docs');
 
-AI Agent Platform — это платформа для создания AI-агентов с собственной базой
-знаний. Пользователь создаёт агента, загружает документы, и агент отвечает на
-вопросы, опираясь на эти документы и приводя ссылки на источники.
-
-Ключевые возможности:
-- Создание неограниченного числа агентов, у каждого своя база знаний.
-- Загрузка документов в форматах TXT, Markdown и PDF.
-- Чат со стримингом ответа в реальном времени.
-- Визуализация шагов агента: видно, как он ищет в базе и вызывает инструменты.
-- Цитаты: каждый ответ ссылается на конкретные фрагменты документов.
-
-Архитектура: ответ строится по схеме RAG (retrieval-augmented generation).
-Сначала вопрос превращается в вектор, затем по базе знаний ищутся ближайшие
-фрагменты (pgvector), после чего языковая модель синтезирует ответ с цитатами.
-При необходимости агент делает дополнительные запросы к базе через инструмент
-search_knowledge_base — это и есть мульти-шаговая работа агента.`;
-
-const DOC_FAQ = `Частые вопросы (FAQ)
-
-Вопрос: Какие модели использует платформа?
-Ответ: Для генерации ответов используется Groq с моделью Llama 3.3 70B и
-поддержкой function-calling. Эмбеддинги считаются локально моделью
-all-MiniLM-L6-v2 (размерность 384), поэтому отдельный платный ключ для
-эмбеддингов не нужен.
-
-Вопрос: Где хранятся векторы документов?
-Ответ: В PostgreSQL с расширением pgvector. Поиск ближайших фрагментов идёт по
-косинусному расстоянию.
-
-Вопрос: Как запустить платформу?
-Ответ: Скопировать .env.example в .env, вписать GROQ_API_KEY и выполнить
-docker compose up. Поднимутся три сервиса: база данных, бэкенд и фронтенд.
-
-Вопрос: Что такое шаги агента?
-Ответ: Это видимая трассировка работы агента — поиск в базе знаний, решение
-вызвать инструмент, выполнение инструмента и финальный синтез ответа. Шаги
-показываются в интерфейсе чата справа от диалога.
-
-Вопрос: Какой демо-логин?
-Ответ: Email demo@aiap.dev и пароль demo1234. Под этим пользователем уже создан
-демо-агент «Помощник по продукту» с этой базой знаний.`;
+function loadSeedDocs(): { filename: string; text: string }[] {
+  if (!fs.existsSync(SEED_DOCS_DIR)) {
+    console.warn(`Seed: ${SEED_DOCS_DIR} not found — no demo documents to index.`);
+    return [];
+  }
+  return fs
+    .readdirSync(SEED_DOCS_DIR)
+    .filter((f) => f.endsWith('.md'))
+    .sort()
+    .map((filename) => ({
+      filename,
+      text: fs.readFileSync(path.join(SEED_DOCS_DIR, filename), 'utf8'),
+    }));
+}
 
 async function main() {
-  console.log('Seed: старт...');
+  console.log('Seed: starting...');
 
   const email = 'demo@aiap.dev';
   const password = await bcrypt.hash('demo1234', 10);
@@ -102,39 +87,41 @@ async function main() {
     update: {},
     create: { email, password, name: 'Demo User' },
   });
-  console.log(`Пользователь: ${email} / demo1234`);
+  console.log(`User: ${email} / demo1234`);
 
-  // Если демо-агент уже есть — считаем, что сид выполнен, выходим.
+  // If the demo agent already exists, treat the seed as done and exit.
   const existing = await prisma.agent.findFirst({
-    where: { userId: user.id, name: 'Помощник по продукту' },
+    where: { userId: user.id, name: 'Product Assistant' },
   });
   if (existing) {
-    console.log('Демо-агент уже существует — пропускаю индексацию.');
+    console.log('Demo agent already exists — skipping indexing.');
     return;
   }
 
   const agent = await prisma.agent.create({
     data: {
       userId: user.id,
-      name: 'Помощник по продукту',
-      description: 'Отвечает на вопросы о платформе по загруженным документам.',
+      name: 'Product Assistant',
+      description: 'Answers questions about the platform from uploaded documents.',
       systemPrompt:
-        'Ты — дружелюбный ассистент по продукту AI Agent Platform. ' +
-        'Отвечай кратко, по-русски, опираясь на базу знаний и приводя ссылки [1], [2].',
+        'You are a friendly product assistant for AI Agent Platform. ' +
+        'Answer concisely, in English, based on the knowledge base and cite sources [1], [2].',
     },
   });
-  console.log(`Агент создан: ${agent.name}`);
+  console.log(`Agent created: ${agent.name}`);
 
-  console.log('Индексация документов (считаются эмбеддинги, подождите)...');
-  await ingest(agent.id, 'product-overview.md', 'text/markdown', DOC_PRODUCT);
-  await ingest(agent.id, 'faq.md', 'text/markdown', DOC_FAQ);
+  console.log('Indexing documents (computing embeddings, please wait)...');
+  const docs = loadSeedDocs();
+  for (const doc of docs) {
+    await ingest(agent.id, doc.filename, 'text/markdown', doc.text);
+  }
 
-  console.log('Seed: готово ✓');
+  console.log('Seed: done ✓');
 }
 
 main()
   .catch((e) => {
-    console.error('Seed упал:', e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

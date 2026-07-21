@@ -114,7 +114,7 @@ agent, so give it a minute. Then sign in and paste your Groq key via **⚙ Groq 
 ### Demo login (seeded automatically)
 
 - **Email:** `demo@aiap.dev` · **Password:** `demo1234`
-- Comes with a ready agent **"Помощник по продукту"** and two indexed documents —
+- Comes with a ready agent **"Product Assistant"** and two indexed documents —
   ask it something like *"Which models does the platform use?"*.
 
 ---

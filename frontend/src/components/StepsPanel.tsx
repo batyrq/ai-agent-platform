@@ -2,7 +2,7 @@
 
 import { AgentStep } from '@/lib/types';
 
-// Иконка по типу узла графа агента.
+// Icon chosen by the agent graph node type.
 const NODE_ICON: Record<string, string> = {
   retrieve: '🔍',
   agent: '🧠',
@@ -19,7 +19,7 @@ export default function StepsPanel({
   return (
     <div className="flex h-full flex-col">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
-        Шаги агента
+        Agent steps
         {live && (
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
         )}
@@ -27,14 +27,14 @@ export default function StepsPanel({
 
       {steps.length === 0 ? (
         <p className="text-xs text-slate-500">
-          Здесь появится трассировка: как агент ищет в базе знаний, вызывает
-          инструменты и синтезирует ответ.
+          A trace will appear here: how the agent searches the knowledge base,
+          calls tools and synthesizes the answer.
         </p>
       ) : (
         <ol className="scroll-thin flex-1 space-y-3 overflow-y-auto">
           {steps.map((s, i) => (
             <li key={i} className="relative pl-6">
-              {/* вертикальная линия таймлайна */}
+              {/* vertical timeline line */}
               {i < steps.length - 1 && (
                 <span className="absolute left-[9px] top-5 h-full w-px bg-slate-700" />
               )}

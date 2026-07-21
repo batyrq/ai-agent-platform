@@ -1,15 +1,15 @@
 #!/bin/sh
-# Точка входа backend-контейнера:
-#  1) применяем миграции Prisma к БД;
-#  2) запускаем seed в фоне (демо-данные «из коробки», не блокирует старт);
-#  3) поднимаем сервер.
+# Backend container entrypoint:
+#  1) apply Prisma migrations to the DB;
+#  2) run the seed in the background (demo data out of the box, non-blocking);
+#  3) start the server.
 set -e
 
-echo "[entrypoint] Применяю миграции Prisma..."
+echo "[entrypoint] Applying Prisma migrations..."
 npx prisma migrate deploy
 
-echo "[entrypoint] Запускаю seed в фоне..."
-( npm run seed || echo "[entrypoint] seed пропущен/упал — не критично" ) &
+echo "[entrypoint] Running seed in the background..."
+( npm run seed || echo "[entrypoint] seed skipped/failed — not critical" ) &
 
-echo "[entrypoint] Стартую сервер..."
+echo "[entrypoint] Starting the server..."
 exec node dist/src/main.js

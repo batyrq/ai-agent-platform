@@ -5,8 +5,8 @@ import { PrismaService } from './prisma/prisma.service';
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Используется healthcheck'ом docker-compose: проверяем, что
-  // приложение живо и БД отвечает.
+  // Used by the docker-compose healthcheck: verifies that the
+  // app is alive and the DB responds.
   @Get('health')
   async health() {
     let db = 'down';

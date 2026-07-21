@@ -22,7 +22,7 @@ export class DocumentsService {
     private readonly agents: AgentsService,
   ) {}
 
-  /** Превращает загруженный файл в текст по mime/расширению. */
+  /** Turns an uploaded file into text based on its mime type/extension. */
   private async extractText(file: {
     originalname: string;
     mimetype: string;
@@ -32,19 +32,19 @@ export class DocumentsService {
     const isPdf = file.mimetype === 'application/pdf' || name.endsWith('.pdf');
 
     if (isPdf) {
-      // Импортируем сам парсер напрямую (минуя index.js пакета — у него
-      // есть баг с чтением тестового файла при require).
+      // Import the parser directly (bypassing the package's index.js — it has
+      // a bug where it reads a test file on require).
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const pdfParse = require('pdf-parse/lib/pdf-parse.js');
       const data = await pdfParse(file.buffer);
       return data.text || '';
     }
 
-    // .txt / .md / прочий текст — читаем как UTF-8.
+    // .txt / .md / other text — read as UTF-8.
     return file.buffer.toString('utf-8');
   }
 
-  /** Полный конвейер: текст → чанки → эмбеддинги → запись в БД (pgvector). */
+  /** Full pipeline: text → chunks → embeddings → write to the DB (pgvector). */
   async ingestText(
     agentId: string,
     filename: string,
@@ -53,15 +53,15 @@ export class DocumentsService {
   ) {
     const chunks = chunkText(text);
     if (chunks.length === 0) {
-      throw new BadRequestException('Документ пустой — нечего индексировать');
+      throw new BadRequestException('Document is empty — nothing to index');
     }
 
     const doc = await this.prisma.document.create({
       data: { agentId, filename, mimeType, chunkCount: chunks.length },
     });
 
-    // Считаем эмбеддинги и пишем чанки. Для демо-объёмов — последовательно;
-    // под нагрузку здесь напрашивается очередь/пакетная обработка.
+    // Compute embeddings and write the chunks. Sequential at demo volumes;
+    // under load this is where a queue/batch processing belongs.
     for (let i = 0; i < chunks.length; i++) {
       const embedding = await this.embeddings.embed(chunks[i]);
       await this.retrieval.insertChunk({
@@ -75,7 +75,7 @@ export class DocumentsService {
     }
 
     this.logger.log(
-      `Документ "${filename}" → ${chunks.length} чанков (agent ${agentId})`,
+      `Document "${filename}" → ${chunks.length} chunks (agent ${agentId})`,
     );
     return doc;
   }
@@ -91,7 +91,7 @@ export class DocumentsService {
   ) {
     await this.agents.assertOwned(userId, agentId);
     if (!file || !file.buffer) {
-      throw new BadRequestException('Файл не передан');
+      throw new BadRequestException('No file provided');
     }
     const text = await this.extractText(file);
     return this.ingestText(
@@ -115,8 +115,8 @@ export class DocumentsService {
     const doc = await this.prisma.document.findFirst({
       where: { id: documentId, agentId },
     });
-    if (!doc) throw new NotFoundException('Документ не найден');
-    // Чанки удалятся каскадом (onDelete: Cascade в схеме).
+    if (!doc) throw new NotFoundException('Document not found');
+    // Chunks are removed by cascade (onDelete: Cascade in the schema).
     await this.prisma.document.delete({ where: { id: documentId } });
     return { ok: true };
   }
